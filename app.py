@@ -1,26 +1,45 @@
 import gradio as gr
 import numpy as np
-import os
 import pandas as pd
 from tensorflow.keras.models import load_model
+from PIL import Image
 
 # ==================================
-# Load Model & Data (LOCAL FILES)
+# Load Model & CSV Data (LOCAL FILES)
 # ==================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model = load_model("herb_identifier.h5")
 
-model = load_model(os.path.join(BASE_DIR, "herb_identifier.h5"))
+# 🔒 FIXED CLASS NAMES (NO IMAGE DATASET NEEDED)
+class_names = [
+    "Aloe Vera",
+    "Ashwagandha",
+    "Bay Leaf",
+    "Cinnamon",
+    "Clove",
+    "Coriander",
+    "Curry Leaves",
+    "Fenugreek",
+    "Garlic",
+    "Ginger",
+    "Gotu Kola",
+    "Hibiscus",
+    "Indian Gooseberry",
+    "Lemongrass",
+    "Mint",
+    "Neem",
+    "Pepper",
+    "Pirandai",
+    "Tulsi",
+    "Turmeric"
+]
 
-dataset_path = os.path.join(BASE_DIR, "dataset_HPI")
-class_names = sorted(os.listdir(dataset_path))
-
-df = pd.read_csv(os.path.join(BASE_DIR, "herb_data.csv"))
-prep_df = pd.read_csv(os.path.join(BASE_DIR, "herb_preparation.csv"))
+df = pd.read_csv("herb_data.csv")
+prep_df = pd.read_csv("herb_preparation.csv")
 
 herbal_info = dict(zip(df["herb"], df["benefit"]))
 
 # ==================================
-# Logic Functions (UNCHANGED)
+# Logic Functions
 # ==================================
 def symptom_recommend(symptom):
     symptom = symptom.lower()
@@ -67,7 +86,7 @@ def get_multiple_preparations(herbs, symptom):
     return "\n".join(results)
 
 def predict(img, symptom):
-    img = img.resize((160,160))
+    img = img.resize((160, 160))
     img_arr = np.array(img) / 255.0
     img_arr = np.expand_dims(img_arr, axis=0)
 
@@ -76,10 +95,8 @@ def predict(img, symptom):
     confidence = round(pred.max() * 100, 2)
 
     benefit = herbal_info.get(plant, "No data available")
-
     recommended_list = symptom_recommend(symptom)
     recommended = ", ".join(recommended_list)
-
     preparation = get_multiple_preparations(recommended_list, symptom)
 
     return (
@@ -112,6 +129,10 @@ h1 {
 with gr.Blocks(css=custom_css) as app:
 
     gr.Markdown("<h1>🌿 AI Herbal Plant Identification & Preparation Guidance System</h1>")
+    gr.Markdown(
+        "Upload a herbal leaf image and enter symptoms to receive AI-based "
+        "plant identification, benefits, herb recommendations, and preparation guidance."
+    )
 
     with gr.Row():
         with gr.Column():
@@ -145,7 +166,8 @@ with gr.Blocks(css=custom_css) as app:
     )
 
     gr.Markdown(
-        "**⚠ Disclaimer:** Educational purpose only. Consult healthcare professionals before use."
+        "**⚠ Disclaimer:** This system provides general herbal guidance for educational purposes only. "
+        "Consult a qualified healthcare professional before use."
     )
 
 app.launch(server_name="0.0.0.0", server_port=7860)
